@@ -5,6 +5,7 @@ import { prisma } from "./lib/prisma";
 import { z } from 'zod';
 
 export async function appRoutes(app: FastifyInstance) {
+    // Cria um hábito para determinados dias da semana
     app.post("/habits", async (req) => {
         const createHabitBody = z.object({
             title: z.string(),
@@ -15,6 +16,7 @@ export async function appRoutes(app: FastifyInstance) {
 
         const { title, weekDays } = createHabitBody.parse(req.body);
 
+        // O StartOF está servindo para deixar a hora zerada (T00:00:00.000z), facilita a requisição no banco de dados pra buscar todos do dia.
         const today = dayjs().startOf('day').toDate();
 
         await prisma.habit.create({
@@ -32,6 +34,7 @@ export async function appRoutes(app: FastifyInstance) {
         })
     });
 
+    // Lista os hábitos disponíveis para o dia da semana procurado
     app.get("/day", async (req) => {
         const getDayParams = z.object({
             date: z.coerce.date(),
@@ -72,5 +75,87 @@ export async function appRoutes(app: FastifyInstance) {
             possibleHabits,
             completedHabits
         }
+    });
+
+    // Toggle de hábito completo ou não
+    app.patch("/habits/:id/toggle", async (req) => {
+        const toggleHabitParams = z.object({
+            id: z.string().uuid(),
+        });
+
+        const { id } = toggleHabitParams.parse(req.params);
+
+        const today = dayjs().startOf("day").toDate();
+
+        // Checa se o dia já existe. Se a pessoa não tiver feito nenhum hábito, o dia não será criado pra não ficar sem motivo e vazio no BD.
+        let day = await prisma.day.findUnique({
+            where: {
+                date: today,
+            }
+        });
+
+        if (!day) {
+            day = await prisma.day.create({
+                data: {
+                    date: today,
+                },
+            });
+        };
+
+        // Checa se já existe o hábito criado no dia.
+        const dayHabit = await prisma.dayHabit.findUnique({
+            where: {
+                day_id_habit_id: {
+                    day_id: day.id,
+                    habit_id: id
+                },
+            },
+        });
+
+        // Toggle do hábito completo ou não no dia.
+        if (dayHabit) {
+            await prisma.dayHabit.delete({
+                where: {
+                    id: dayHabit.id,
+                },
+            });
+        } else {
+            await prisma.dayHabit.create({
+                data: {
+                    day_id: day.id,
+                    habit_id: id,
+                }
+            });
+        }
+
+    });
+
+    // Retorna a quantidade de hábitos estavam disponíveis e quantos foram completados
+    app.get('/summary', async (req) => {
+        const summary = await prisma.$queryRaw`
+            SELECT
+                D.id,
+                D.date,
+                (
+                    SELECT
+                        cast(count(*) as float)
+                    FROM day_habits DH
+                    WHERE DH.day_id = D.id
+                ) as completed,
+                (
+                    SELECT
+                        cast(count(*) as float)
+                    FROM habit_week_days HWD
+                    JOIN habits H
+                        ON H.id = HWD.habit_id
+                    WHERE
+                        HWD.week_day = cast(strftime('%w', D.date/1000.0, 'unixepoch') as int)
+                        AND H.created_at <= D.date
+                ) as amount
+            FROM days D
+        `
+
+        return summary;
     })
+
 }
