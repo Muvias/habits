@@ -31,8 +31,7 @@ export function HabitsList({ date, onCompletedChanged }: HabitsListProps) {
             setHabitsInfo(res.data)
         })
     }, []);
-    
-    
+
     async function handleToggleHabit(habitId: string) {
         await api.patch(`habits/${habitId}/toggle`);
         

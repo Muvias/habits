@@ -14,6 +14,7 @@ const availableWeekDays = [
     "Sábado"
 ];
 
+// Componente de formulário para adicionar um hábito;
 export function NewHabitForm() {
     const [title, setTitle] = useState('');
     const [weekDays, setweekDays] = useState<number[]>([]);

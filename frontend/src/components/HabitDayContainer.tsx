@@ -11,10 +11,10 @@ interface HabitDayContainerProps {
     date: Date
     defaultCompleted?: number
     amount?: number
-}
+};
 
 export function HabitDayContainer({ defaultCompleted = 0, amount = 0, date }: HabitDayContainerProps) {
-    const [completed, setCompleted] = useState(defaultCompleted)
+    const [completed, setCompleted] = useState(defaultCompleted);
 
     const completedPercentage = amount > 0 ? Math.round((completed / amount) * 100) : 0;
 

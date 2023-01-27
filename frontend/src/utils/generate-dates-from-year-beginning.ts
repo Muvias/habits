@@ -8,7 +8,7 @@ export function generateDatesFromYearBeginning() {
 
     let compareDate = firstDayOfTheYear;
 
-    // isBefore, toDate e add estão vindo do dayjs.
+    // isBefore, toDate e add estão vindo do dayjs. Este while vai adicionar as datas ao array do primeiro dia do ano até o dia atual da requisição.
     while(compareDate.isBefore(today)) {
         dates.push(compareDate.toDate());
 
